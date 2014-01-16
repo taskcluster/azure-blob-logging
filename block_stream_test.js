@@ -1,14 +1,54 @@
 suite('stream', function() {
   var azure = require('azure');
-  var blob = azure.createBlobService();
+  var retryOperations = new azure.ExponentialRetryPolicyFilter();
+  var blob = azure.createBlobService().withFilter(retryOperations);
+  var https = require('https');
+  var fs = require('fs');
   var uuid = require('uuid');
   var BlockStream = require('./block_stream');
 
+  if (process.env.DEBUG) {
+    blob.logger = new azure.Logger(azure.Logger.LogLevels.DEBUG);
+  }
+
+  /**
+  Use the node http client to fetch the entire contents of the azure upload.
+  */
+  function fetchContents(expectedLen, callback) {
+    var url = blob.getBlobUrl(container, path);
+    var buffer = new Buffer(0);
+    var req = https.get(url, function(res) {
+      var len = parseInt(res.headers['content-length'], 10);
+      if (len < expectedLen) {
+        console.log(
+          'retrying fetching of resources wanted %s bytes got %s bytes',
+          expectedLen,
+          len
+        );
+        req.abort();
+        return setTimeout(
+          fetchContents,
+          100,
+          expectedLen,
+          callback
+        );
+      }
+
+      res.on('data', function(incoming) {
+        buffer = Buffer.concat([buffer, incoming]);
+      });
+
+      res.on('end', function() {
+        callback(null, buffer);
+      });
+    }).once('error', callback);
+  }
+
   var subject;
-  var path = 'mytestfile.txt';
+  var path = 'mycommitfile.txt';
   var container;
   setup(function() {
-    container = 'test-' + uuid.v4();
+    container = uuid.v4();
     subject = new BlockStream(blob, container, path);
   });
 
@@ -27,60 +67,35 @@ suite('stream', function() {
     blob.deleteContainer(container, done);
   });
 
-  suite('put some blocks', function() {
-    var blockIds;
-    var buffers = [
-      // we dont want to fetch the contents of the chunk so we fetch
-      // the size instead
-      new Buffer('0'),
-      new Buffer('000')
-    ];
+  var fixture = __dirname + '/test/fixtures/travis_log.txt';
+  suite('upload a file', function() {
 
+    // setup the stream
+    var blockStream;
+    var manager;
     setup(function(done) {
-      blockIds = [];
+      var url = blob.getBlobUrl(container, path);
+      console.log(url);
+      blockSteam = new BlockStream(
+        blob,
+        container,
+        path
+      );
 
-      subject.on('data', function(blockId) {
-        blockIds.push(blockId);
-      });
+      fs.createReadStream(fixture).pipe(blockSteam);
 
-      subject.on('end', done);
-
-      // two distinct writes so we have two block ids.
-      subject.write(buffers[0], null, function() {
-        subject.end(buffers[1]);
-      });
+      blockSteam.once('finish', done).
+                   once('error', done);
     });
 
-    test('has block ids', function(done) {
-      assert.equal(blockIds.length, 2);
-
-      blockIds.forEach(function(id) {
-        assert.ok(id.indexOf(path) !== -1);
+    test('read contents', function(done) {
+      var expected = fs.readFileSync(fixture);
+      fetchContents(expected.length, function(err, buffer) {
+        if (err) return done(err);
+        assert.equal(expected.toString(), buffer.toString());
+        done();
       });
-
-      var expected = [];
-
-      buffers.forEach(function(buffer, idx) {
-        var name = new Buffer(blockIds[idx]).toString('base64');
-        var size = buffer.length;
-
-        expected.push({
-          Name: name,
-          Size: size
-        });
-      });
-
-      blob.listBlobBlocks(
-        container,
-        path,
-        'all',
-        function(err, list) {
-          if (err) return done(err);
-          var blocks = list.UncommittedBlocks;
-          assert.deepEqual(expected, blocks);
-          done();
-        }
-      );
     });
   });
 });
+
