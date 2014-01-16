@@ -1,10 +1,10 @@
 suite('stream', function() {
   var azure = require('azure');
-  var retryOperations = new azure.ExponentialRetryPolicyFilter();
-  var blob = azure.createBlobService().withFilter(retryOperations);
+  var blob = azure.createBlobService();
   var https = require('https');
   var fs = require('fs');
   var uuid = require('uuid');
+
   var BlockStream = require('./block_stream');
   var Promise = require('promise');
 
@@ -80,7 +80,6 @@ suite('stream', function() {
 
     // setup the stream
     var blockStream;
-    var manager;
     setup(function(done) {
       var url = blob.getBlobUrl(container, path);
       blockSteam = new BlockStream(
