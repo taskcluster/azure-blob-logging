@@ -75,7 +75,6 @@ suite('stream', function() {
     var manager;
     setup(function(done) {
       var url = blob.getBlobUrl(container, path);
-      console.log(url);
       blockSteam = new BlockStream(
         blob,
         container,
