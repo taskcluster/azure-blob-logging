@@ -39,6 +39,10 @@ function BlockStream(service, container, blob, options) {
     service.setBlobMetadata.bind(service)
   );
 
+  this._setProperties = Promise.denodeify(
+    service.setBlobProperties.bind(service)
+  );
+
   this.once('finish', this._finalizeBlob.bind(this));
 }
 
@@ -48,20 +52,29 @@ BlockStream.prototype = {
   __proto__: stream.Writable.prototype,
   _super: stream.Writable.prototype,
 
+  contentType: 'text/plain',
+  contentEncoding: 'utf8',
+
+  // At the end of each stream we need to indicate the blob is done uploading.
+  // We do this by adding a custom header via the blob metadata api.
   _finalizeBlob: function() {
-    // At the end of each stream we need to indicate the blob is done uploading.
-    // We do this by adding a custom header via the blob metadata api.
-    this._setMetadata(
-      this.container,
-      this.blob,
-      { 'complete': 1 }
-    ).then(
+    var promises = [
+      this._setMetadata(this.container, this.blob, {
+        complete: 1
+      }),
+
+      this._setProperties(this.container, this.blob, {
+        contentTypeHeader: this.contentType,
+        contentEncoding: this.contentEncoding
+      })
+    ];
+
+    Promise.all(promises).then(
       // emit close but don't pass the result of set metadata
-      function() {
+      function(result) {
         this.emit('close');
       }.bind(this),
 
-      // emit the error directly
       this.emit.bind(this, 'error')
     );
   },
@@ -95,9 +108,7 @@ BlockStream.prototype = {
         return this._commitBlocks(
           this.container,
           this.blob,
-          blockList,
-          // XXX: This is a hack we should expose this as options
-          { contentType: 'text/plain', contentEncoding: 'utf8' }
+          blockList
         );
       }.bind(this)
     ).then(

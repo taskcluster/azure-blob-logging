@@ -6,6 +6,7 @@ suite('stream', function() {
   var fs = require('fs');
   var uuid = require('uuid');
   var BlockStream = require('./block_stream');
+  var Promise = require('promise');
 
   if (process.env.DEBUG) {
     blob.logger = new azure.Logger(azure.Logger.LogLevels.DEBUG);
@@ -14,33 +15,41 @@ suite('stream', function() {
   /**
   Use the node http client to fetch the entire contents of the azure upload.
   */
-  function fetchContents(callback) {
-    var url = blob.getBlobUrl(container, path);
-    var buffer = new Buffer(0);
-    var req = https.get(url, function(res) {
-      if (!res.headers[BlockStream.COMPLETE_HEADER]) {
-        console.log(
-          'retrying fetching of resources wanted %s bytes got %s bytes',
-          expectedLen,
-          len
-        );
-        req.abort();
-        return setTimeout(
-          fetchContents,
-          100,
-          expectedLen,
-          callback
-        );
-      }
+  function fetchContents() {
+    var promise = new Promise(function(accept, reject) {
+      var url = blob.getBlobUrl(container, path);
+      var buffer = new Buffer(0);
+      var req = https.get(url, function(res) {
+        if (!res.headers[BlockStream.COMPLETE_HEADER]) {
+          console.log(
+            'retrying fetching of resources wanted %s bytes got %s bytes',
+            expectedLen,
+            len
+          );
+          req.abort();
+          return setTimeout(
+            fetchContents,
+            100,
+            function() {
+              fetchContents().then(accept, reject);
+            }
+          );
+        }
 
-      res.on('data', function(incoming) {
-        buffer = Buffer.concat([buffer, incoming]);
-      });
+        res.on('data', function(incoming) {
+          buffer = Buffer.concat([buffer, incoming]);
+        });
 
-      res.on('end', function() {
-        callback(null, buffer);
-      });
-    }).once('error', callback);
+        res.on('end', function() {
+          accept({
+            content: buffer,
+            headers: res.headers
+          });
+        });
+      }).once('error', reject);
+    });
+
+    return promise;
   }
 
   var subject;
@@ -86,13 +95,27 @@ suite('stream', function() {
                  once('error', done);
     });
 
-    test('read contents', function(done) {
+    test('read contents', function() {
       var expected = fs.readFileSync(fixture);
-      fetchContents(function(err, buffer) {
-        if (err) return done(err);
-        assert.equal(expected.toString(), buffer.toString());
-        done();
-      });
+      return fetchContents().then(
+        function(result) {
+          var headers = result.headers;
+          var content = result.content.toString();
+
+          // content is valid
+          assert.equal(expected.toString(), content);
+
+          assert.equal(
+            headers['content-type'],
+            blockSteam.contentType
+          );
+
+          assert.equal(
+            headers['content-encoding'],
+            blockSteam.contentEncoding
+          );
+        }
+      );
     });
   });
 });
