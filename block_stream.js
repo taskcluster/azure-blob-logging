@@ -1,6 +1,3 @@
-/**
-This file is the abstract stream for both the block and commit streams.
-*/
 var stream = require('stream'),
     assert = require('assert'),
     Promise = require('promise');
