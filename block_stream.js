@@ -55,11 +55,16 @@ BlockStream.prototype = {
       buffer
     ).then(
       function commitBlock() {
+        // commits discard all blocks not listed by the commit so its important
+        // to commit only while we are not also putting a block.
+
         var blockList = {
+          // the blocks not yet seen in a commit
           UncommittedBlocks: [blockId]
         };
 
         if (this._committedBlocks.length) {
+          // all the blocks we have already committed
           blockList.CommittedBlocks = this._committedBlocks;
         }
 
@@ -67,6 +72,7 @@ BlockStream.prototype = {
           this.container,
           this.blob,
           blockList,
+          // XXX: This is a hack we should expose this as options
           { contentType: 'text/plain', contentEncoding: 'utf8' }
         );
       }.bind(this)
