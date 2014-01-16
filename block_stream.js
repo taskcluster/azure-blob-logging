@@ -34,10 +34,37 @@ function BlockStream(service, container, blob, options) {
   this._commitBlocks = Promise.denodeify(
     service.commitBlobBlocks.bind(service)
   );
+
+  this._setMetadata = Promise.denodeify(
+    service.setBlobMetadata.bind(service)
+  );
+
+  this.once('finish', this._finalizeBlob.bind(this));
 }
+
+BlockStream.COMPLETE_HEADER = 'x-ms-meta-complete';
 
 BlockStream.prototype = {
   __proto__: stream.Writable.prototype,
+  _super: stream.Writable.prototype,
+
+  _finalizeBlob: function() {
+    // At the end of each stream we need to indicate the blob is done uploading.
+    // We do this by adding a custom header via the blob metadata api.
+    this._setMetadata(
+      this.container,
+      this.blob,
+      { 'complete': 1 }
+    ).then(
+      // emit close but don't pass the result of set metadata
+      function() {
+        this.emit('close');
+      }.bind(this),
+
+      // emit the error directly
+      this.emit.bind(this, 'error')
+    );
+  },
 
   _write: function(buffer, encoding, done) {
     var blockId = this.service.getBlockId(

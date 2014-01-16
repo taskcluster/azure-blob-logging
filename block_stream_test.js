@@ -14,12 +14,11 @@ suite('stream', function() {
   /**
   Use the node http client to fetch the entire contents of the azure upload.
   */
-  function fetchContents(expectedLen, callback) {
+  function fetchContents(callback) {
     var url = blob.getBlobUrl(container, path);
     var buffer = new Buffer(0);
     var req = https.get(url, function(res) {
-      var len = parseInt(res.headers['content-length'], 10);
-      if (len < expectedLen) {
+      if (!res.headers[BlockStream.COMPLETE_HEADER]) {
         console.log(
           'retrying fetching of resources wanted %s bytes got %s bytes',
           expectedLen,
@@ -68,7 +67,7 @@ suite('stream', function() {
   });
 
   var fixture = __dirname + '/test/fixtures/travis_log.txt';
-  suite('upload a file', function() {
+  suite('upload an entire file', function() {
 
     // setup the stream
     var blockStream;
@@ -83,13 +82,13 @@ suite('stream', function() {
 
       fs.createReadStream(fixture).pipe(blockSteam);
 
-      blockSteam.once('finish', done).
-                   once('error', done);
+      blockSteam.once('close', done).
+                 once('error', done);
     });
 
     test('read contents', function(done) {
       var expected = fs.readFileSync(fixture);
-      fetchContents(expected.length, function(err, buffer) {
+      fetchContents(function(err, buffer) {
         if (err) return done(err);
         assert.equal(expected.toString(), buffer.toString());
         done();
