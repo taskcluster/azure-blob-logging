@@ -1,18 +1,16 @@
 {
-  "name": "azure-upload",
+  "name": "taskcluster-livelog-azure",
   "version": "0.0.0",
   "description": "",
   "main": "block_stream.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "bin": {
-    "azurelogecho": "./bin/logecho"
+    "test": "make test"
   },
   "author": "",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "azure": "0.7.19"
+    "azure": "0.7.19",
+    "promise": "~3.2.0"
   },
   "devDependencies": {
     "mocha": "~1.17.0",
