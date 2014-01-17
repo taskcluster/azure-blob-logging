@@ -27,7 +27,6 @@ Due to how node streams work while we are writing the readable side will buffer 
 ## Example
 
 ```js
-// XXX: name will change very soon
 var AzureStream = require('taskcluster-azure-blobstream');
 
 var azure = require('azure');
