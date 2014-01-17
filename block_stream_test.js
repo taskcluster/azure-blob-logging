@@ -1,6 +1,6 @@
 suite('stream', function() {
   var azure = require('azure');
-  var blob = azure.createBlobService();
+  var service = azure.createBlobService();
   var https = require('https');
   var fs = require('fs');
   var uuid = require('uuid');
@@ -9,7 +9,7 @@ suite('stream', function() {
   var Promise = require('promise');
 
   if (process.env.DEBUG) {
-    blob.logger = new azure.Logger(azure.Logger.LogLevels.DEBUG);
+    service.logger = new azure.Logger(azure.Logger.LogLevels.DEBUG);
   }
 
   /**
@@ -17,25 +17,9 @@ suite('stream', function() {
   */
   function fetchContents() {
     var promise = new Promise(function(accept, reject) {
-      var url = blob.getBlobUrl(container, path);
+      var url = service.getBlobUrl(container, path);
       var buffer = new Buffer(0);
       var req = https.get(url, function(res) {
-        if (!res.headers[BlockStream.COMPLETE_HEADER]) {
-          console.log(
-            'retrying fetching of resources wanted %s bytes got %s bytes',
-            expectedLen,
-            len
-          );
-          req.abort();
-          return setTimeout(
-            fetchContents,
-            100,
-            function() {
-              fetchContents().then(accept, reject);
-            }
-          );
-        }
-
         res.on('data', function(incoming) {
           buffer = Buffer.concat([buffer, incoming]);
         });
@@ -57,12 +41,12 @@ suite('stream', function() {
   var container;
   setup(function() {
     container = uuid.v4();
-    subject = new BlockStream(blob, container, path);
+    subject = new BlockStream(service, container, path);
   });
 
   // create the container on azure
   setup(function(done) {
-    blob.createContainerIfNotExists(
+    service.createContainerIfNotExists(
       container,
       // allow any public GET operations
       { publicAccessLevel: 'container' },
@@ -72,25 +56,49 @@ suite('stream', function() {
 
   // ensure we are always in a clean state
   teardown(function(done) {
-    blob.deleteContainer(container, done);
+    service.deleteContainer(container, done);
   });
 
   var fixture = __dirname + '/test/fixtures/travis_log.txt';
-  suite('upload an entire file', function() {
+  var subject;
+  setup(function() {
+    subject = new BlockStream(
+      service,
+      container,
+      path
+    );
+  });
 
-    // setup the stream
-    var blockStream;
+  suite('partial upload', function() {
+    var expectedContent = new Buffer('xxx');
     setup(function(done) {
-      blockSteam = new BlockStream(
-        blob,
-        container,
-        path
+      subject.write(expectedContent, null, done);
+    });
+
+    test('content should be written but not marked as finished', function() {
+      return fetchContents().then(
+        function(result) {
+          var headers = result.headers;
+          var content = result.content.toString();
+
+          // content is valid
+          assert.equal(expectedContent.toString(), content);
+
+          assert.ok(
+            !headers[BlockStream.COMPLETE_HEADER],
+            'is not marked as complete'
+          );
+        }
       );
+    });
+  });
 
-      fs.createReadStream(fixture).pipe(blockSteam);
-
-      blockSteam.once('close', done).
-                 once('error', done);
+  suite('upload an entire file', function() {
+    // setup the stream
+    setup(function(done) {
+      fs.createReadStream(fixture).pipe(subject);
+      subject.once('close', done);
+      subject.once('error', done);
     });
 
     test('read contents', function() {
@@ -103,14 +111,19 @@ suite('stream', function() {
           // content is valid
           assert.equal(expected.toString(), content);
 
+          assert.ok(
+            headers[BlockStream.COMPLETE_HEADER],
+            'is marked as complete'
+          );
+
           assert.equal(
             headers['content-type'],
-            blockSteam.contentType
+            subject.contentType
           );
 
           assert.equal(
             headers['content-encoding'],
-            blockSteam.contentEncoding
+            subject.contentEncoding
           );
         }
       );
