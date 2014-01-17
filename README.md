@@ -1,9 +1,18 @@
-azure-blob-logging
+taskcluster-azure-blobstream
 ==================
 
-"Live" logging built on top of the azure blob  service.
+Stream interface built on top of azure for incrementally pushing buffers
+and committing them. Designed for "live" logging and bursty streams of
+data (which is expected to end eventually).
 
-Documentation is very sparse at a high level while I am tuning the performance...
+There are many common cases which the azure client handles _much_ better
+then this library if you doing any of the following use the azure
+client:
+
+  - writing never ending data (that may be rolled over)
+  - randomly accessing or updating blocks/pages
+  - uploading files already on disk
+  - uploading a stream indefinitely
 
 ## Strategy
 
@@ -19,7 +28,7 @@ Due to how node streams work while we are writing the readable side will buffer 
 
 ```js
 // XXX: name will change very soon
-var AzureStream = require('azure-upload');
+var AzureStream = require('taskcluster-azure-blobstream');
 
 var azure = require('azure');
 var blobService = azure.createBlobService();

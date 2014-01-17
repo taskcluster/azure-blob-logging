@@ -1,5 +1,5 @@
 {
-  "name": "taskcluster-livelog-azure",
+  "name": "taskcluster-azure-blobstream",
   "version": "0.0.0",
   "description": "",
   "main": "block_stream.js",
