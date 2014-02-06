@@ -52,6 +52,11 @@ BlockStream.prototype = {
   __proto__: stream.Writable.prototype,
   _super: stream.Writable.prototype,
 
+  /**
+  When true the stream has finalized completely and the content is readable.
+  @type Boolean
+  */
+  closed: false,
   contentType: 'text/plain',
   contentEncoding: 'utf8',
 
@@ -72,6 +77,7 @@ BlockStream.prototype = {
     Promise.all(promises).then(
       // emit close but don't pass the result of set metadata
       function(result) {
+        this.closed = true;
         this.emit('close');
       }.bind(this),
 

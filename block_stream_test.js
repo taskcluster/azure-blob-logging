@@ -97,7 +97,11 @@ suite('stream', function() {
     // setup the stream
     setup(function(done) {
       fs.createReadStream(fixture).pipe(subject);
-      subject.once('close', done);
+      assert.ok(!subject.closed, 'not closed');
+      subject.once('close', function() {
+        assert.ok(subject.closed, 'closed');
+        done();
+      });
       subject.once('error', done);
     });
 
