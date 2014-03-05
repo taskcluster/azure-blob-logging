@@ -1,6 +1,6 @@
 {
   "name": "taskcluster-azure-blobstream",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "block_stream.js",
   "scripts": {
@@ -9,7 +9,7 @@
   "author": "",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "azure": "0.7.19",
+    "azure": "0.8.1",
     "promise": "~3.2.0"
   },
   "devDependencies": {
