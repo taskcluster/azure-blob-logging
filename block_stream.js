@@ -97,6 +97,7 @@ BlockStream.prototype = {
   },
 
   _write: function(buffer, encoding, done) {
+    var start = Date.now();
     var blockId = this.service.getBlockId(
       this.blob,
       this._blockOffset++
@@ -132,6 +133,7 @@ BlockStream.prototype = {
     ).then(
       function markBlockCommitted() {
         this._committedBlocks.push(blockId);
+        this.emit('write performance', Date.now() - start);
         done();
       }.bind(this),
       // handle errors

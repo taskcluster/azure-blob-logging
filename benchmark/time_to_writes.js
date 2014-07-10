@@ -31,19 +31,20 @@ co(function* () {
   // Total number of incremental writes to make...
   var pendingWrites = 100;
 
+  stream.on('write performance', function(time) {
+    console.log(
+      'write done in %d ms pending: %s',
+      time, stream._writableState.buffer.length
+    );
+  });
+
   function write(callback) {
     var nth = pendingWrites--;
 
     // We are getting a rough measure of latency and stream throughput. So size
     // of the write should not matter too much here.
     var writeStartTime = Date.now();
-    stream.write(new Buffer('xfoo\n woot\n do stuff\n'), function() {
-      console.log(
-        'wrote %d nth write in %d ms',
-        nth,
-        Date.now() - writeStartTime
-      );
-    });
+    stream.write(new Buffer('xfoo\n woot\n do stuff\n'));
 
     // issue another write _without_ waiting for the write to finish (or not
     // finish but also not in the same tick of the event loop.
