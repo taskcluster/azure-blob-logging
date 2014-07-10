@@ -63,8 +63,8 @@ azureWriter.once('finish', function() {
 
 ## RANDOM NOTES
 
-the `azure` module is very slow to load (330ms) and takes up 33mb of
-memory (as of 0.7.19). We don't use very many azure blob api calls so
+the `azure-storage` module is slow to load (147ms) and takes up 19mb of
+memory (as of 0.3). We don't use very many azure blob api calls so
 ideally we could extract (or help the primary lib extract) the url
 signing part of authentication into its own lib and then just directly
 call http for our operations... The ultimate goal here is to consume
