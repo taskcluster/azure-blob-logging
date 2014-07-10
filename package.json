@@ -13,8 +13,9 @@
     "promise": "~3.2.0"
   },
   "devDependencies": {
+    "co": "^3.0.6",
     "mocha": "~1.17.0",
-    "uuid": "~1.4.1",
-    "mocha-as-promised": "~2.0.0"
+    "mocha-as-promised": "~2.0.0",
+    "uuid": "~1.4.1"
   }
 }

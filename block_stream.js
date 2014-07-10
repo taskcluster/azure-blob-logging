@@ -85,6 +85,17 @@ BlockStream.prototype = {
     );
   },
 
+  _writev: function(chunks, done) {
+    // Merge underlying pending buffers into a single buffer and send it off as
+    // a single buffer. This usually means massive latency reductions but uses
+    // use more memory when merging the buffers.
+    var bufferChunks = chunks.map(function(chunk) {
+      return chunk.chunk
+    });
+
+    return this._write(Buffer.concat(bufferChunks), null, done);
+  },
+
   _write: function(buffer, encoding, done) {
     var blockId = this.service.getBlockId(
       this.blob,

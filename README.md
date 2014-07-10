@@ -24,6 +24,17 @@ The algorithm is very simple (dumb)
  
 Due to how node streams work while we are writing the readable side will buffer its writes up to the high water mark.
 
+
+## Note about performance for node 0.10
+
+This stream does not do any special internal buffering to optimize
+backed up writes. What this means is if your goal is to "append" as fast
+as possible without much concern for memory node 0.10 will be _much_
+slower then 0.11 because writes are done in order and each buffer is
+written sepeartely without merges of the buffers that have yet to be
+written. Node 0.11 introduces `_writev` which is used here to merge any
+pending buffers before the write which avoids most latency issues.
+
 ## Example
 
 ```js
