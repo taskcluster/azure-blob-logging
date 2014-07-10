@@ -28,11 +28,11 @@ function BlockStream(service, container, blob, options) {
   stream.Writable.call(this, options);
 
   this._putBlock = Promise.denodeify(
-    service.createBlobBlockFromText.bind(service)
+    service.createBlockFromText.bind(service)
   );
 
   this._commitBlocks = Promise.denodeify(
-    service.commitBlobBlocks.bind(service)
+    service.commitBlocks.bind(service)
   );
 
   this._setMetadata = Promise.denodeify(
@@ -69,7 +69,7 @@ BlockStream.prototype = {
       }),
 
       this._setProperties(this.container, this.blob, {
-        contentTypeHeader: this.contentType,
+        contentType: this.contentType,
         contentEncoding: this.contentEncoding
       })
     ];

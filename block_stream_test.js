@@ -1,5 +1,5 @@
 suite('stream', function() {
-  var azure = require('azure');
+  var azure = require('azure-storage');
   var service = azure.createBlobService();
   var https = require('https');
   var fs = require('fs');
@@ -17,7 +17,7 @@ suite('stream', function() {
   */
   function fetchContents() {
     var promise = new Promise(function(accept, reject) {
-      var url = service.getBlobUrl(container, path);
+      var url = service.getUrl(container, path);
       var buffer = new Buffer(0);
       var req = https.get(url, function(res) {
         res.on('data', function(incoming) {
